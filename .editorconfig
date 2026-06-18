@@ -1,0 +1,5 @@
+root = true
+
+[*.{s,inc,pio}]
+indent_style = tab
+tab_width = 10

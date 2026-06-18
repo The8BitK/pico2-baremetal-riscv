@@ -1,0 +1,43 @@
+#
+# Copyright (c) 2026 The8BitK
+#
+# SPDX-License-Identifier: MIT
+#
+
+.include	"include/hardware/regs/addressmap.inc"
+.include	"include/hardware/regs/resets.inc"
+
+# Function: unreset_subsystems
+# Description: Takes hardware components out of reset (activates).
+#
+# Inputs:
+#   a0 = hardware component bits, see RESETS_RESET register
+#
+# Outputs:
+#   none
+#
+.globl	unreset_subsystems
+unreset_subsystems:
+	li	t0, RESETS_BASE + REG_ALIAS_CLR_BITS
+	sw	a0, 0(t0)				# clear reset bits for selected subsystems
+
+	li	t0, RESETS_BASE
+1:	lw	t1, RESETS_RESET_DONE_OFFSET(t0)	# read reset completion status
+	and	t1, t1, a0			# keep only requested subsystem bits
+	bne	t1, a0, 1b			# wait until all subsystems are active
+	ret
+
+# Function: reset_subsystems
+# Description: Takes hardware components into reset (deactivates).
+#
+# Inputs:
+#   a0 = hardware component bits, see RESETS_RESET register
+#
+# Outputs:
+#   none
+#
+.globl	reset_subsystems
+reset_subsystems:
+	li	t0, RESETS_BASE + REG_ALIAS_SET_BITS
+	sw	a0, 0(t0)				# place selected subsystems into reset
+	ret

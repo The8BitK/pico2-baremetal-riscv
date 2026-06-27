@@ -41,6 +41,9 @@ pads_bank0_gpio_clear_bits:
 # Inputs:
 #   a0 = GPIO number
 #
+# Outputs:
+#   none
+#
 .globl	pads_bank0_enable_pad_output
 pads_bank0_enable_pad_output:
 	addi	sp, sp, -4

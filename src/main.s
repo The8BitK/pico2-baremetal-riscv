@@ -42,14 +42,7 @@ _start_main:
 	#---------------------------------------------
 
 	li	a0, 25				# GPIO 25
-	li	a1, IO_BANK0_GPIO0_CTRL_FUNCSEL_VALUE_SIOB_PROC_0	# function 5: SIO_0
-	call	io_bank0_set_gpio_function		# GPIO is controlled by SIO
-
-	li	a0, 25				# GPIO 25
-	call	sio_gpio_enable_output		# allow SIO to drive the GPIO
-
-	li	a0, 25				# GPIO 25
-	call	pads_bank0_enable_pad_output		# enable pad output and remove isolation
+	call	sio_gpio_setup_output		# Initialize GPIO pin as SIO-controlled output
 
 	#---------------------------------------------
 	# Crystal oscillator (XOSC)
@@ -118,7 +111,7 @@ _start_main:
 	li	a0, TIMER0_BASE
 	call	timer_set_source_tick_generator	# timer0 counts ticks
 
-	li	a0, TIMER0_BASE	
+	li	a0, TIMER0_BASE
 	li	a1, 0				# alarm 0
 	call	timer_enable_alarm_interrupt		# enable timer0 alarm0
 
@@ -133,24 +126,52 @@ _start_main:
 	call	unreset_subsystems
 
 	li	a0, PIO0_BASE			# PIOx to use
-	li	a1, 1				# GPIO to blink
+	li	a1, 2				# GPIO to blink
 	call	configure_and_start_blink_program_pio
+
+	#---------------------------------------------
+	# Launch core 1
+	#---------------------------------------------
+
+	la	a0, vector_table_start
+	li	a1, SRAM_END - 4096
+	la	a2, .L_core1_entry_point
+	call	sio_multicore_launch_core1
 
 	#---------------------------------------------
 	# Constantly toggle GPIO 0
 	#---------------------------------------------
 
 	li	a0, 0				# GPIO 0
-	li	a1, IO_BANK0_GPIO0_CTRL_FUNCSEL_VALUE_SIOB_PROC_0	# function 5: SIO_0
-	call	io_bank0_set_gpio_function		# GPIO is controlled by SIO
+	call	sio_gpio_setup_output		# Initialize GPIO pin as SIO-controlled output
 
-	li	a0, 0				# GPIO 0
-	call	sio_gpio_enable_output		# allow SIO to drive the GPIO
-
-	li	a0, 0				# GPIO 0
-	call	pads_bank0_enable_pad_output		# enable pad output and remove isolation
-
-.L_loop_forever:
+.L_core0_loop_forever:
 	li	a0, 0				# GPIO 0
 	call	sio_toggle_gpio
-	j	.L_loop_forever
+	call	pause
+	j	.L_core0_loop_forever
+
+	#=============================================
+	# Core 1 entry point
+	#=============================================
+
+.L_core1_entry_point:
+	li	a0, 1				# GPIO 1
+	call	sio_gpio_setup_output		# Initialize GPIO pin as SIO-controlled output
+
+.L_core1_loop_forever:
+	li	a0, 1				# GPIO 1
+	call	sio_toggle_gpio
+	call	pause
+	j	.L_core1_loop_forever
+
+	#---------------------------------------------
+	# Simple waste cycles loop
+	#---------------------------------------------
+
+pause:
+	li	t0, 0x400000
+.L_waste_cycles_here:
+	addi	t0, t0, -1
+	bnez	t0, .L_waste_cycles_here
+	ret

@@ -27,7 +27,7 @@ pio_load_program:
 	mv	t1, a2			# program start address
 
 1:	lhu	t2, 0(t1)			# load 16-bit instruction
-	sh	t2, PIO_INSTR_MEM0_OFFSET(t0)	# store to PIO memory
+	sw	t2, PIO_INSTR_MEM0_OFFSET(t0)	# store to PIO memory
 
 	addi	t1, t1, 2			# next memory address (+2 bytes)
 	addi	t0, t0, 4			# next PIO memory address (+4 bytes)

@@ -1,6 +1,6 @@
 # RP2350 Bare-Metal RISC-V Assembly
 
-A bare-metal RISC-V assembly project for the Raspberry Pi Pico 2 (RP2350) that brings up the system from scratch, blinks the onboard LED via GPIO, and handles interrupts — with no SDK dependency.
+A bare-metal RISC-V assembly project for the Raspberry Pi Pico 2 (RP2350) that builds the system from the ground up, including clock initialization, GPIO control, interrupt handling, and Processor Core 1 startup without SDK dependencies.
 
 ## Features
 
@@ -13,7 +13,18 @@ A bare-metal RISC-V assembly project for the Raspberry Pi Pico 2 (RP2350) that b
 - Configures the tick generator for a 1 μs tick period.
 - Programs TIMER0 ALARM0 to generate an interrupt every 500 ms.
 - Toggles the onboard LED from the TIMER0 interrupt handler.
-- Drives the GPIO 1 LED via PIO0 State Machine 0 using an inline PIO blink program.
+- Drives the GPIO 2 LED via PIO0 State Machine 0 using an inline PIO blink program.
+- Launches Processor Core 1 via the SIO inter-processor FIFO using the ROM boot protocol.
+- Core 0 continuously toggles GPIO 0; Core 1 independently toggles GPIO 1.
+
+## Recommended Hardware
+
+Since the project drives several GPIO pins, a breakout board with a status LED per GPIO pin makes it easy to observe all outputs at a glance. Some compatible options:
+
+- [Freenove Breakout Board for Raspberry Pi Pico](https://store.freenove.com/products/fnk0081)
+- [OSOYOO Breakout Board for Raspberry Pi Pico](https://osoyoo.com/2024/12/02/osoyoo-breakout-board-for-pico-series/)
+
+Any similar board that provides per-pin LED indicators will work.
 
 ## Code Conventions
 

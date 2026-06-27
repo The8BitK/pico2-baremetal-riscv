@@ -1,3 +1,7 @@
+Applies to register definitions and boot image constants derived from the Raspberry Pi Pico SDK:
+   - include/boot/
+   - include/hardware/
+
 Copyright (c) 2020 Raspberry Pi (Trading) Ltd.
 
 Redistribution and use in source and binary forms, with or without modification, are permitted provided that the

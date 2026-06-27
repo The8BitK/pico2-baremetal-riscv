@@ -27,7 +27,7 @@
 #   none
 #
 # The programming sequence for the PLL is as follows:
-# 1. Program the reference clock divider (is a divide by 1 in the RP2350 case).
+# 1. Program the reference clock divider.
 # 2. Program the feedback divider.
 # 3. Turn on the main power and VCO.
 # 4. Wait for the VCO to achieve a stable frequency, as indicated by the LOCK status flag.

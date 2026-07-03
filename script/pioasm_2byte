@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+
+pioasm -v 1 -o go $1 | awk -F'//' '
+/wrap_target/ { print "\t\t\t# .wrap_target"; next }
+/wrap/        { print "\t\t\t# .wrap"; next }
+/0x/ {
+    hex=$1
+    gsub(/^[ \t]+|[ \t]+$/, "", hex)   # trim whitespace
+    gsub(/,/, "", hex)                 # remove comma
+
+    comment=$2
+    gsub(/^[ \t]+|[ \t]+$/, "", comment)
+
+    printf "\t.2byte\t%-6s\t# %s\n", hex, comment
+}'

@@ -30,10 +30,7 @@
 #
 .globl	configure_and_start_blink_program_pio
 configure_and_start_blink_program_pio:
-	addi	sp, sp, -12
-	sw	ra, 0(sp)
-	sw	s0, 4(sp)
-	sw	s1, 8(sp)
+	cm.push	{ra, s0, s1}, -16
 
 	mv	s0, a0					# keep a copy of PIOx base
 	mv	s1, a1					# and GPIO pin number
@@ -92,11 +89,7 @@ configure_and_start_blink_program_pio:
 	li	t1, 1
 	sw	t1, PIO_CTRL_OFFSET(t0)
 
-	lw	ra, 0(sp)
-	lw	s0, 4(sp)
-	lw	s1, 8(sp)
-	addi	sp, sp, 12
-	ret
+	cm.popret	{ra, s0, s1}, 16
 
 .section	.rodata.pio
 

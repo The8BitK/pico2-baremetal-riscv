@@ -2,6 +2,7 @@ PROJECT    = pico2-baremetal-riscv
 FAMILY     = 0xe48bff5a  # 5.5.3. UF2 Targeting Rules
 SOURCES = \
     $(wildcard src/*.s) \
+    $(wildcard src/vga_v1/*.s) \
     $(wildcard src/lib/hardware/*.s)
 OBJECTS    = $(patsubst src/%.s,build/%.o,$(SOURCES))
 TARGET_ELF = build/$(PROJECT).elf

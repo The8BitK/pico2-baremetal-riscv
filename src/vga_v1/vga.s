@@ -10,44 +10,40 @@
 .include	"include/hardware/regs/pio.inc"
 .include	"include/hardware/regs/resets.inc"
 
-
 .section	.rodata
 
 .balign	2
 .L_hsync_prg_start:
 	.2byte	0x80a0	# 0: pull   block
-	.2byte	0xe081	# 1: set    pindirs, 1
 			# .wrap_target
-	.2byte	0xa027	# 2: mov    x, osr
-	.2byte	0x0043	# 3: jmp    x--, 3
+	.2byte	0xa027	# 1: mov    x, osr
+	.2byte	0x0042	# 2: jmp    x--, 2
+	.2byte	0xff00	# 3: set    pins, 0                [31]
 	.2byte	0xff00	# 4: set    pins, 0                [31]
 	.2byte	0xff00	# 5: set    pins, 0                [31]
-	.2byte	0xff00	# 6: set    pins, 0                [31]
-	.2byte	0xff01	# 7: set    pins, 1                [31]
-	.2byte	0xec01	# 8: set    pins, 1                [12]
-	.2byte	0xc100	# 9: irq    nowait 0               [1]
+	.2byte	0xff01	# 6: set    pins, 1                [31]
+	.2byte	0xec01	# 7: set    pins, 1                [12]
+	.2byte	0xc100	# 8: irq    nowait 0               [1]
 			# .wrap
 .L_hsync_prg_end:
 
-.L_vsync_prg_start:		# 10+
+.L_vsync_prg_start:		# 9+
 	.2byte	0x80a0	# 0: pull   block
-	.2byte	0xe081	# 1: set    pindirs, 1
 			# .wrap_target
-	.2byte	0xa027	# 2: mov    x, osr
-	.2byte	0x20c0	# 3: wait   1 irq, 0
-	.2byte	0xc001	# 4: irq    nowait 1
-	.2byte	0x0043	# 5: jmp    x--, 3
-	.2byte	0xe041	# 6: set    y, 1
-	.2byte	0x20c0	# 7: wait   1 irq, 0
-	.2byte	0x0087	# 8: jmp    y--, 7
-	.2byte	0xe000	# 9: set    pins, 0
+	.2byte	0xa027	# 1: mov    x, osr
+	.2byte	0x20c0	# 2: wait   1 irq, 0
+	.2byte	0xc001	# 3: irq    nowait 1
+	.2byte	0x0042	# 4: jmp    x--, 2
+	.2byte	0xe049	# 5: set    y, 9
+	.2byte	0x20c0	# 6: wait   1 irq, 0
+	.2byte	0x0086	# 7: jmp    y--, 6
+	.2byte	0xe000	# 8: set    pins, 0
+	.2byte	0x20c0	# 9: wait   1 irq, 0
 	.2byte	0x20c0	# 10: wait   1 irq, 0
-	.2byte	0x20c0	# 11: wait   1 irq, 0
-	.2byte	0xe042	# 12: set    y, 2
-	.2byte	0x38c0	# 13: wait   1 irq, 0        side 1
-	.2byte	0x008d	# 14: jmp    y--, 13
+	.2byte	0xe05f	# 11: set    y, 31
+	.2byte	0x38c0	# 12: wait   1 irq, 0        side 1
+	.2byte	0x008c	# 13: jmp    y--, 12
 			# .wrap
-
 .L_vsync_prg_end:
 
 color_prg_start:
@@ -95,33 +91,35 @@ configure_vga:
 	# Configure PIO SET pin(s)
 	#-------------------------------------
 
-	# SM0
-	slli	t0, s1, PIO_SM0_PINCTRL_SET_BASE_LSB		# the least significant SET bit is the GPIO number
-	li	t1, 1 << PIO_SM0_PINCTRL_SET_COUNT_LSB		# SET bits count
-	or	t0, t0, t1				# combine bits
-	sw	t0, PIO_SM0_PINCTRL_OFFSET(s0)		# configure SET bits
+	mv	a0, s0					# PIO_BASE
+	li	a1, 0					# State Machine number
+	li	a2, 0					# OUT pins:     none
+	ori	a3, s1, 0x100				# SET pins:     derive from s1
+	li	a4, 0					# SIDESET pins: none
+	li	a5, 0					# IN pins:      none
+	call	pio_sm_configure_pins
 
-	# SM1
-	slli	t0, s2, PIO_SM1_PINCTRL_SET_BASE_LSB		# the least significant SET bit is the GPIO number
-	li	t1, 1 << PIO_SM1_PINCTRL_SET_COUNT_LSB		# SET bits count
-	slli	t2, s2, PIO_SM1_PINCTRL_SIDESET_BASE_LSB	# the least significant SIDESET bit is the GPIO number
-	li	t3, 1 << PIO_SM1_PINCTRL_SIDESET_COUNT_LSB	# SIDESET bits count
-	or	t0, t0, t1				# combine bits
-	or	t0, t0, t2				# combine bits
-	or	t0, t0, t3				# combine bits
-	sw	t0, PIO_SM1_PINCTRL_OFFSET(s0)		# configure SET bits
+	li	a2, 1					# SET PINDIRS
+	call	pio_sm_configure_pindirs
+
+	mv	a0, s0					# PIO_BASE
+	li	a1, 1					# State Machine number
+	li	a2, 0					# OUT pins:     none
+	ori	a3, s2, 0x100				# SET pins:     derive from s2
+	ori	a4, s2, 0x100				# SIDESET pins: derive from s2
+	li	a5, 0					# IN pins:      none
+	call	pio_sm_configure_pins
+
+	li	a2, 1					# SET PINDIRS
+	call	pio_sm_configure_pindirs
 
 	#-------------------------------------
-	# Set PIO StateMachine 0 clock frequency
+	# Set PIO StateMachine 0 & 1 clock frequency
 	#-------------------------------------
 
-	# SM0
-	li	t0, 0xFFFF0000				# INT_DIV: 0xFFFF, FRAC_DIV: 0x00
-	sw	t0, PIO_SM0_CLKDIV_OFFSET(s0)
-
-	# SM1
-	li	t0, 0xFFFF0000				# INT_DIV: 0xFFFF, FRAC_DIV: 0x00
-	sw	t0, PIO_SM1_CLKDIV_OFFSET(s0)
+	li	t0, 0x000a0000				# 25 MHz,  INT_DIV: 250/25=10, FRAC_DIV: 0x00
+	sw	t0, PIO_SM0_CLKDIV_OFFSET(s0)			# SM0
+	sw	t0, PIO_SM1_CLKDIV_OFFSET(s0)			# SM1
 
 	#-------------------------------------
 	# Load PIO program into PIO memory
@@ -136,47 +134,43 @@ configure_vga:
 
 	# SM1
 	mv	a0, s0					# PIOx base
-	li	a1, 10					# PIO memory offset
+	li	a1, 9					# PIO memory offset
 	la	a2, .L_vsync_prg_start			# PIO program start address in RAM
 	la	a3, .L_vsync_prg_end - 2			# PIO program end address in RAM
 	call	pio_load_program
 
 	# SM0: Prepare X register value by pushing it into FIFO TX queue
-	li	t0, 0x8F
+	li	t0, 640 + 16 - 2 				# TODO: check if the numbers are correct
 	sw	t0, PIO_TXF0_OFFSET(s0)
 
 	# SM1: Prepare X register value by pushing it into FIFO TX queue
-	li	t0, 0x1
+	li	t0, 480
 	sw	t0, PIO_TXF1_OFFSET(s0)
 
 	#-------------------------------------
 	# Configure wraps
 	#-------------------------------------
 
-	# SM0
-	lw	t0, PIO_SM0_EXECCTRL_OFFSET(s0)
-	li	t1, ~(PIO_SM0_EXECCTRL_WRAP_TOP_BITS | PIO_SM0_EXECCTRL_WRAP_BOTTOM_BITS)
-	and	t0, t0, t1
-	li	t1, (2 << PIO_SM0_EXECCTRL_WRAP_BOTTOM_LSB) | (9 << PIO_SM0_EXECCTRL_WRAP_TOP_LSB)
-	or	t0, t0, t1
-	sw	t0, PIO_SM0_EXECCTRL_OFFSET(s0)
+	mv	a0, s0
+	li	a1, 0
+	li	a2, 1
+	li	a3, 8
+	call	pio_sm_configure_wrap
 
-	# SM1
-	lw	t0, PIO_SM1_EXECCTRL_OFFSET(s0)
-	li	t1, ~(PIO_SM1_EXECCTRL_WRAP_TOP_BITS | PIO_SM1_EXECCTRL_WRAP_BOTTOM_BITS)
-	and	t0, t0, t1
-	li	t1, (12 << PIO_SM1_EXECCTRL_WRAP_BOTTOM_LSB) | (24 << PIO_SM1_EXECCTRL_WRAP_TOP_LSB)
-	or	t0, t0, t1
-	sw	t0, PIO_SM1_EXECCTRL_OFFSET(s0)
+	mv	a0, s0
+	li	a1, 1
+	li	a2, 10
+	li	a3, 22
+	call	pio_sm_configure_wrap
 
 	# SM0_INSTR
 	# P.S. Is required when the State Machine needs
 	# to start from an address different than 0
-	li	t0, 0x000a				# jmp 10
+	li	t0, 0x0009				# SM1: jmp 9
 	sw	t0, PIO_SM1_INSTR_OFFSET(s0)
 
 	#-------------------------------------
-	# Enable PIO StateMachine 0
+	# Enable StateMachines
 	#-------------------------------------
 
 	li	t0, REG_ALIAS_SET_BITS

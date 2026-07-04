@@ -65,7 +65,7 @@ _start_main:
 	# Divider params for 150 MHz:
 	#
 	# $ cd pico-sdk
-	# $ src/rp2_common/hardware_clocks/scripts/vcocalc.py 150
+	# $ $PICO_SDK_PATH/src/rp2_common/hardware_clocks/scripts/vcocalc.py 150
 	#   Requested: 150.0 MHz
 	#   Achieved:  150.0 MHz
 	#   REFDIV:    1
@@ -73,10 +73,11 @@ _start_main:
 	#   PD1:       5
 	#   PD2:       2
 
+	# 250 MHz
 	li	a0, 1	# REFDIV
 	li	a1, 125	# FBDIV
-	li	a2, 5	# PD1
-	li	a3, 2	# PD2
+	li	a2, 6	# PD1
+	li	a3, 1	# PD2
 	call	pll_sys_start
 
 	#---------------------------------------------

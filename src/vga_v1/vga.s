@@ -163,7 +163,7 @@ configure_vga:
 	li	a3, 22
 	call	pio_sm_configure_wrap
 
-	# SM0_INSTR
+	# SM1_INSTR
 	# P.S. Is required when the State Machine needs
 	# to start from an address different than 0
 	li	t0, 0x0009				# SM1: jmp 9

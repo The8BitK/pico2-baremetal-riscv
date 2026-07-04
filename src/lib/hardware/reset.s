@@ -17,6 +17,9 @@
 # Outputs:
 #   none
 #
+# Clobbers:
+#   tmp registers
+#
 .globl	unreset_subsystems
 unreset_subsystems:
 	li	t0, RESETS_BASE
@@ -37,6 +40,9 @@ unreset_subsystems:
 #
 # Outputs:
 #   none
+#
+# Clobbers:
+#   tmp registers
 #
 .globl	reset_subsystems
 reset_subsystems:

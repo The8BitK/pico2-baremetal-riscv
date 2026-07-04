@@ -18,6 +18,9 @@
 # Outputs:
 #   none
 #
+# Clobbers:
+#   tmp registers
+#
 .globl	io_bank0_set_gpio_function
 io_bank0_set_gpio_function:
 	li	t0, IO_BANK0_BASE

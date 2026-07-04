@@ -21,6 +21,9 @@
 # Outputs:
 #   none
 #
+# Clobbers:
+#   tmp registers
+#
 .globl	xosc_start
 xosc_start:
 	li	t0, XOSC_BASE

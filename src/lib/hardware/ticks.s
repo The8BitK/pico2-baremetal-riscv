@@ -51,6 +51,9 @@
 # Outputs:
 #   none
 #
+# Clobbers:
+#   tmp registers
+#
 .globl	ticks_set_timer_increment_cycles
 ticks_set_timer_increment_cycles:
 	li	t0, TICKS_BASE
@@ -67,6 +70,9 @@ ticks_set_timer_increment_cycles:
 #
 # Outputs:
 #   none
+#
+# Clobbers:
+#   tmp registers
 #
 .globl	ticks_start_timer
 ticks_start_timer:
@@ -86,6 +92,9 @@ ticks_start_timer:
 #
 # Outputs:
 #   none
+#
+# Clobbers:
+#   tmp registers
 #
 .globl	ticks_stop_timer
 ticks_stop_timer:

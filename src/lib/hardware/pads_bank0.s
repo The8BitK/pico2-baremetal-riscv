@@ -18,6 +18,9 @@
 # Outputs:
 #   none
 #
+# Clobbers:
+#   tmp registers
+#
 .globl	pads_bank0_gpio_clear_bits
 pads_bank0_gpio_clear_bits:
 	li	t0, PADS_BANK0_BASE + REG_ALIAS_CLR_BITS
@@ -44,14 +47,19 @@ pads_bank0_gpio_clear_bits:
 # Outputs:
 #   none
 #
+# Clobbers:
+#   tmp registers
+#
 .globl	pads_bank0_enable_pad_output
 pads_bank0_enable_pad_output:
-	addi	sp, sp, -4
+	addi	sp, sp, -8
 	sw	ra, 0(sp)
+	sw	a1, 4(sp)
 
 	li	a1, PADS_BANK0_GPIO0_OD_BITS | PADS_BANK0_GPIO0_ISO_BITS	# clear OD (output disable) and ISO (pad isolation)
 	call	pads_bank0_gpio_clear_bits
 
 	lw	ra, 0(sp)
-	addi	sp, sp, 4
+	lw	a1, 4(sp)
+	addi	sp, sp, 8
 	ret

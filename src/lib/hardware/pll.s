@@ -26,6 +26,9 @@
 # Outputs:
 #   none
 #
+# Clobbers:
+#   tmp registers
+#
 # The programming sequence for the PLL is as follows:
 # 1. Program the reference clock divider.
 # 2. Program the feedback divider.

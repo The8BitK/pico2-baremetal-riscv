@@ -20,6 +20,9 @@
 # Outputs:
 #   none
 #
+# Clobbers:
+#   tmp registers
+#
 .globl	timer_set_source_tick_generator
 timer_set_source_tick_generator:
 	sw	zero, TIMER_SOURCE_OFFSET(a0)
@@ -38,6 +41,9 @@ timer_set_source_tick_generator:
 #
 # Outputs:
 #   none
+#
+# Clobbers:
+#   tmp registers
 #
 .globl	timer_set_alarm_relative
 timer_set_alarm_relative:
@@ -63,6 +69,9 @@ timer_set_alarm_relative:
 # Outputs:
 #   none
 #
+# Clobbers:
+#   tmp registers
+#
 .globl	timer_enable_alarm_interrupt
 timer_enable_alarm_interrupt:
 	atomic.aliasSetBits	t0, a0
@@ -85,6 +94,9 @@ timer_enable_alarm_interrupt:
 #
 # Outputs:
 #   none
+#
+# Clobbers:
+#   tmp registers
 #
 .globl	timer_clear_alarm_interrupt
 timer_clear_alarm_interrupt:

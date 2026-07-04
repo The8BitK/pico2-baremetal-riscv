@@ -18,6 +18,9 @@
 # Outputs:
 #   none
 #
+# Clobbers:
+#   tmp registers
+#
 .globl	clocks_set_clk_ref_source_xosc
 clocks_set_clk_ref_source_xosc:
 	li	t0, CLOCKS_BASE
@@ -41,6 +44,9 @@ clocks_set_clk_ref_source_xosc:
 #
 # Outputs:
 #   none
+#
+# Clobbers:
+#   tmp registers
 #
 .globl	clocks_set_clk_sys_source_clk_ref
 clocks_set_clk_sys_source_clk_ref:
@@ -72,6 +78,9 @@ clocks_set_clk_sys_source_clk_ref:
 # Outputs:
 #   none
 #
+# Clobbers:
+#   tmp registers
+#
 .globl	clocks_set_clk_sys_aux_source_pll_sys
 clocks_set_clk_sys_aux_source_pll_sys:
 	li	t0, CLOCKS_BASE
@@ -94,6 +103,9 @@ clocks_set_clk_sys_aux_source_pll_sys:
 #
 # Outputs:
 #   none
+#
+# Clobbers:
+#   tmp registers
 #
 .globl	clocks_set_clk_sys_source_aux
 clocks_set_clk_sys_source_aux:

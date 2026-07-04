@@ -19,6 +19,9 @@
 # Outputs:
 #   none
 #
+# Clobbers:
+#   tmp registers
+#
 .globl	sio_gpio_set_output_enable_mask
 sio_gpio_set_output_enable_mask:
 	li	t0, SIO_BASE
@@ -34,17 +37,22 @@ sio_gpio_set_output_enable_mask:
 # Outputs:
 #   none
 #
+# Clobbers:
+#   tmp registers
+#
 .globl	sio_gpio_enable_output
 sio_gpio_enable_output:
-	addi	sp, sp, -4
+	addi	sp, sp, -8
 	sw	ra, 0(sp)
+	sw	a0, 4(sp)
 
 	li	t0, 1
 	sll	a0, t0, a0			# convert GPIO number to GPIO bitmask
 	call	sio_gpio_set_output_enable_mask
 
 	lw	ra, 0(sp)
-	addi	sp, sp, 4
+	lw	a0, 4(sp)
+	addi	sp, sp, 8
 	ret
 
 # Function: sio_gpio_setup_output
@@ -58,9 +66,17 @@ sio_gpio_enable_output:
 # Outputs:
 #   none
 #
+# Clobbers:
+#   tmp registers
+#
 .globl	sio_gpio_setup_output
 sio_gpio_setup_output:
-	cm.push	{ra, s0}, -16
+	addi	sp, sp, -16
+	sw	ra, 0(sp)
+	sw	a0, 4(sp)
+	sw	a1, 8(sp)
+	sw	s0, 12(sp)
+
 	mv	s0, a0
 
 	li	a1, IO_BANK0_GPIO0_CTRL_FUNCSEL_VALUE_SIOB_PROC_0	# function 5: SIO_0
@@ -72,7 +88,13 @@ sio_gpio_setup_output:
 	mv	a0, s0
 	call	pads_bank0_enable_pad_output		# enable pad output and remove isolation
 
-	cm.popret	{ra, s0}, 16
+	lw	ra, 0(sp)
+	lw	a0, 4(sp)
+	lw	a1, 8(sp)
+	lw	s0, 12(sp)
+	addi	sp, sp, 16
+	ret
+
 
 # Function: sio_toggle_gpio
 # Description: Toggles the state of the specified GPIO output.
@@ -85,6 +107,9 @@ sio_gpio_setup_output:
 #
 # Outputs:
 #   none
+#
+# Clobbers:
+#   tmp registers
 #
 .globl	sio_toggle_gpio
 sio_toggle_gpio:
@@ -103,6 +128,9 @@ sio_toggle_gpio:
 # Outputs:
 #   none
 #
+# Clobbers:
+#   tmp registers
+#
 .globl	sio_set_gpio_high
 sio_set_gpio_high:
 	li	t0, SIO_BASE
@@ -119,6 +147,9 @@ sio_set_gpio_high:
 #
 # Outputs:
 #   none
+#
+# Clobbers:
+#   tmp registers
 #
 .globl	sio_set_gpio_low
 sio_set_gpio_low:
@@ -138,6 +169,9 @@ sio_set_gpio_low:
 #
 # Outputs:
 #   a0 = word read from the FIFO
+#
+# Clobbers:
+#   tmp registers
 #
 .globl	sio_multicore_fifo_read_blocking
 sio_multicore_fifo_read_blocking:
@@ -163,6 +197,9 @@ sio_multicore_fifo_read_blocking:
 # Outputs:
 #   none
 #
+# Clobbers:
+#   tmp registers
+#
 .globl	sio_multicore_fifo_write_blocking
 sio_multicore_fifo_write_blocking:
 	li	t0, SIO_BASE
@@ -183,6 +220,9 @@ sio_multicore_fifo_write_blocking:
 #
 # Outputs:
 #   none
+#
+# Clobbers:
+#   tmp registers
 #
 .globl	sio_multicore_fifo_drain
 sio_multicore_fifo_drain:
@@ -210,9 +250,19 @@ sio_multicore_fifo_drain:
 # Outputs:
 #   none
 #
+# Clobbers:
+#   tmp registers
+#
 .globl	sio_multicore_launch_core1
 sio_multicore_launch_core1:
-	cm.push	{ra, s0-s2}, -16
+	addi	sp, sp, -28
+	sw	ra, 0(sp)
+	sw	a0, 4(sp)
+	sw	a1, 8(sp)
+	sw	a2, 12(sp)
+	sw	s0, 16(sp)
+	sw	s1, 20(sp)
+	sw	s2, 24(sp)
 
 	la	s0, .L_launch_core_cmd_sequence_start	# cmd sequence
 	sw	a0, 12(s0)			# set vector table
@@ -233,7 +283,15 @@ sio_multicore_launch_core1:
 	addi	s0, s0, 4				# advance to the next command
 	blt	s0, s1, .L_next_cmd
 
-	cm.popret	{ra, s0-s2}, 16
+	lw	ra, 0(sp)
+	lw	a0, 4(sp)
+	lw	a1, 8(sp)
+	lw	a2, 12(sp)
+	lw	s0, 16(sp)
+	lw	s1, 20(sp)
+	lw	s2, 24(sp)
+	addi	sp, sp, 28
+	ret
 
 .section	.data
 .L_launch_core_cmd_sequence_start:

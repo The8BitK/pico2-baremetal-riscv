@@ -15,6 +15,9 @@
 # Outputs:
 #   none
 #
+# Clobbers:
+#   tmp registers
+#
 .globl	rvcsr_disable_interrupts
 rvcsr_disable_interrupts:
 	li	t0, RVCSR_MSTATUS_MIE_BITS
@@ -31,6 +34,9 @@ rvcsr_disable_interrupts:
 # Outputs:
 #   none
 #
+# Clobbers:
+#   tmp registers
+#
 .globl	rvcsr_enable_interrupts
 rvcsr_enable_interrupts:
 	li	t0, RVCSR_MSTATUS_MIE_BITS
@@ -46,6 +52,9 @@ rvcsr_enable_interrupts:
 # Outputs:
 #   none
 #
+# Clobbers:
+#   tmp registers
+#
 .globl	rvcsr_disable_all_machine_interrupts
 rvcsr_disable_all_machine_interrupts:
 	csrw	RVCSR_MIE_OFFSET, zero
@@ -60,6 +69,9 @@ rvcsr_disable_all_machine_interrupts:
 #
 # Outputs:
 #   none
+#
+# Clobbers:
+#   tmp registers
 #
 .globl	rvcsr_enable_machine_interrupts
 rvcsr_enable_machine_interrupts:
@@ -80,6 +92,9 @@ rvcsr_enable_machine_interrupts:
 #
 # Outputs:
 #   none
+#
+# Clobbers:
+#   tmp registers
 #
 .globl	rvcsr_set_mtvec_vectored_mode
 rvcsr_set_mtvec_vectored_mode:
@@ -102,6 +117,9 @@ rvcsr_set_mtvec_vectored_mode:
 # Outputs:
 #   none
 #
+# Clobbers:
+#   tmp registers
+#
 .globl	rvcsr_enable_irqs_in_window
 rvcsr_enable_irqs_in_window:
 	slli	t0, a0, 16	# place the window bitmask in bits [31:16]
@@ -120,10 +138,15 @@ rvcsr_enable_irqs_in_window:
 # Outputs:
 #   none
 #
+# Clobbers:
+#   tmp registers
+#
 .globl	rvcsr_enable_irq
 rvcsr_enable_irq:
-	addi	sp, sp, -4
+	addi	sp, sp, -12
 	sw	ra, 0(sp)
+	sw	a0, 4(sp)
+	sw	a1, 8(sp)
 
 	srli	a1, a0, 4		# index:  irq / 16
 	andi	a0, a0, 0xF	# window: 1 << (irq % 16)
@@ -131,7 +154,9 @@ rvcsr_enable_irq:
 	call	rvcsr_enable_irqs_in_window
 
 	lw	ra, 0(sp)
-	addi	sp, sp, 4
+	lw	a0, 4(sp)
+	lw	a1, 8(sp)
+	addi	sp, sp, 12
 	ret
 
 # Function: rvcsr_trigger_irqs_in_window
@@ -146,6 +171,9 @@ rvcsr_enable_irq:
 #
 # Outputs:
 #   none
+#
+# Clobbers:
+#   tmp registers
 #
 .globl	rvcsr_trigger_irqs_in_window
 rvcsr_trigger_irqs_in_window:
@@ -165,10 +193,15 @@ rvcsr_trigger_irqs_in_window:
 # Outputs:
 #   none
 #
+# Clobbers:
+#   tmp registers
+#
 .globl	rvcsr_trigger_irq
 rvcsr_trigger_irq:
-	addi	sp, sp, -4
+	addi	sp, sp, -12
 	sw	ra, 0(sp)
+	sw	a0, 4(sp)
+	sw	a1, 8(sp)
 
 	srli	a1, a0, 4		# index:  irq / 16
 	andi	a0, a0, 0xF	# window: 1 << (irq % 16)
@@ -176,5 +209,7 @@ rvcsr_trigger_irq:
 	call	rvcsr_trigger_irqs_in_window
 
 	lw	ra, 0(sp)
-	addi	sp, sp, 4
+	lw	a0, 4(sp)
+	lw	a1, 8(sp)
+	addi	sp, sp, 12
 	ret

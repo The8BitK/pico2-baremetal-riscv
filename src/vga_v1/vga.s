@@ -9,6 +9,7 @@
 .include	"include/hardware/regs/io_bank0.inc"
 .include	"include/hardware/regs/pio.inc"
 .include	"include/hardware/regs/resets.inc"
+.include	"include/macros.inc"
 
 .section	.rodata
 
@@ -173,8 +174,7 @@ configure_vga:
 	# Enable StateMachines
 	#-------------------------------------
 
-	li	t0, REG_ALIAS_SET_BITS
-	add	t0, t0, s0				# PIOx, set bits alias
+	atomic.aliasSetBits t0, s0				# PIOx, set bits alias
 	li	t1, 0b11					# StateMachine 0 & 1
 	sw	t1, PIO_CTRL_OFFSET(t0)
 

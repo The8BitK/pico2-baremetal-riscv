@@ -64,9 +64,16 @@ pio_load_program:
 #   sm_num   = register holding the state machine number (0-based)
 #
 .macro	pio.smCtrlBase dst:req pio_base:req sm_num:req
+	.ifc \dst,\pio_base
+		error "dst and pio_base must be different registers"
+	.endif
+	.ifc \dst,\sm_num
+		.error "dst and sm_num must be different registers"
+	.endif
+
 	li	\dst, PIO_SM1_EXECCTRL_OFFSET - PIO_SM0_EXECCTRL_OFFSET
 	mul	\dst, \dst, \sm_num
-	add	\dst, \dst, \pio_base			# PIO_BASE + ((SM1-SM0) * n)
+	add	\dst, \dst, \pio_base
 .endm
 
 # Function: pio_sm_configure_pins
@@ -93,7 +100,7 @@ pio_load_program:
 #
 .globl	pio_sm_configure_pins
 pio_sm_configure_pins:
-	pio.smCtrlBase t0, a0, a1			# get SMx base adress in t0
+	pio.smCtrlBase t0, a0, a1			# get SMx base adress into t0
 
 	andi	t1, a2, 0x1F			# OUT_BASE
 	srli	t2, a2, 8				# OUT_COUNT: (a2 >> 8) << PIO_SM0_PINCTRL_OUT_COUNT_LSB
@@ -151,7 +158,7 @@ pio_sm_configure_pins:
 #
 .globl	pio_sm_configure_pindirs
 pio_sm_configure_pindirs:
-	pio.smCtrlBase t0, a0, a1			# get SMx base adress in t0
+	pio.smCtrlBase t0, a0, a1			# get SMx base adress into t0
 
 	li	t2, 0b1110000010000000		# craft PIO "set pindirs" instruction
 	andi	t1, a2, 0x1F			# extract PINDIRS
@@ -179,7 +186,7 @@ pio_sm_configure_pindirs:
 #
 .globl	pio_sm_configure_wrap
 pio_sm_configure_wrap:
-	pio.smCtrlBase t0, a0, a1			# get SMx base adress in t0
+	pio.smCtrlBase t0, a0, a1			# get SMx base adress into t0
 
 	lw	t1, PIO_SM0_EXECCTRL_OFFSET(t0)	# read EXECCTRL register
 	li	t2, ~(PIO_SM0_EXECCTRL_WRAP_TOP_BITS | PIO_SM0_EXECCTRL_WRAP_BOTTOM_BITS)

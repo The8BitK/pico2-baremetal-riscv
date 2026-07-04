@@ -19,7 +19,7 @@
 #   none
 #
 .macro	h3.block
-	slt x0, x0, x0
+	slt	x0, x0, x0
 .endm
 
 # Macro: h3.unblock
@@ -34,5 +34,48 @@
 #   none
 #
 .macro	h3.unblock
-	slt x0, x0, x1
+	slt	x0, x0, x1
+.endm
+
+# Macro: atomic.aliasXorBits
+# Description: Computes the XOR alias address for a peripheral register by
+#              setting bit 12 of src (REG_ALIAS_XOR_BITS), storing the result
+#              in dst. Writing to the resulting address atomically XORs the
+#              target register with the written value, with no read-modify-write.
+#
+# Arguments:
+#   dst = destination register (written with the alias address)
+#   src = register holding the base peripheral register address
+#
+.macro	atomic.aliasXorBits dst:req src:req
+	bseti	\dst, \src, 12	#  == or REG_ALIAS_XOR_BITS
+.endm
+
+# Macro: atomic.aliasSetBits
+# Description: Computes the SET alias address for a peripheral register by
+#              setting bit 13 of src (REG_ALIAS_SET_BITS), storing the result
+#              in dst. Writing to the resulting address atomically sets bits in
+#              the target register, with no read-modify-write.
+#
+# Arguments:
+#   dst = destination register (written with the alias address)
+#   src = register holding the base peripheral register address
+#
+.macro	atomic.aliasSetBits dst:req src:req
+	bseti	\dst, \src, 13	#  == or REG_ALIAS_SET_BITS
+.endm
+
+# Macro: atomic.aliasClrBits
+# Description: Computes the CLR alias address for a peripheral register by
+#              setting bits 12 and 13 of src (REG_ALIAS_CLR_BITS), storing the
+#              result in dst. Writing to the resulting address atomically clears
+#              bits in the target register, with no read-modify-write.
+#
+# Arguments:
+#   dst = destination register (written with the alias address)
+#   src = register holding the base peripheral register address
+#
+.macro	atomic.aliasClrBits dst:req src:req
+	bseti	\dst, \src, 12
+	bseti	\dst, \src, 13	#  == or REG_ALIAS_CLR_BITS
 .endm

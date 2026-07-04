@@ -6,6 +6,7 @@
 
 .include	"include/hardware/regs/addressmap.inc"
 .include	"include/hardware/regs/resets.inc"
+.include	"include/macros.inc"
 
 # Function: unreset_subsystems
 # Description: Takes hardware components out of reset (activates).
@@ -18,7 +19,8 @@
 #
 .globl	unreset_subsystems
 unreset_subsystems:
-	li	t0, RESETS_BASE + REG_ALIAS_CLR_BITS
+	li	t0, RESETS_BASE
+	atomic.aliasClrBits	t0, t0
 	sw	a0, 0(t0)				# clear reset bits for selected subsystems
 
 	li	t0, RESETS_BASE
@@ -38,6 +40,7 @@ unreset_subsystems:
 #
 .globl	reset_subsystems
 reset_subsystems:
-	li	t0, RESETS_BASE + REG_ALIAS_SET_BITS
+	li	t0, RESETS_BASE
+	atomic.aliasSetBits	t0, t0
 	sw	a0, 0(t0)				# place selected subsystems into reset
 	ret

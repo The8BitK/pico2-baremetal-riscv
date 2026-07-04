@@ -7,6 +7,7 @@
 .include	"include/hardware/regs/addressmap.inc"
 .include	"include/hardware/regs/io_bank0.inc"
 .include	"include/hardware/regs/pio.inc"
+.include	"include/macros.inc"
 
 .section	.text
 
@@ -84,8 +85,7 @@ configure_and_start_blink_program_pio:
 	# Enable PIO StateMachine 0
 	#-------------------------------------
 
-	li	t0, REG_ALIAS_SET_BITS
-	add	t0, t0, s0				# PIOx, StateMachine 0, set bits alias
+	atomic.aliasSetBits	t0, s0
 	li	t1, 1
 	sw	t1, PIO_CTRL_OFFSET(t0)
 

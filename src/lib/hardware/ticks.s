@@ -6,33 +6,34 @@
 
 .include	"include/hardware/regs/addressmap.inc"
 .include	"include/hardware/regs/ticks.inc"
+.include	"include/macros.inc"
 
-# Macro: ticksCalcTimerRegAddr
+# Macro: ticks.timesCtrlBase
 # Description:
 #   Calculates the address of a register within a TICKS TIMERx block
 #   and stores the resulting address in dst register.
 #
 # Inputs:
-#   timer = regular register name containing the timer number (0, 1, ...)
-#   reg   = register offset within a TIMERx block
+#   ticks_base
+#   timer_num  = regular register name containing the timer number (0, 1, ...)
 #
 # Outputs:
 #   dst = address of the requested TIMERx register
 #
-# Clobbers:
-#   t1 (unless other tmp register is provided)
-#
 # Formula:
-#   dst = TICKS_BASE + timer_reg + (timer * 12)
+#   dst = ticks_base + (timer_block_stride * timer_num)
 #
-# Notes:
-#   Each TIMERx block occupies 12 bytes (3 registers × 4 bytes).
-#
-.macro	ticksCalcTimerRegAddr dst:req timer:req timer_reg:req tmp=t1
-	li	\dst, TICKS_BASE + \timer_reg
-	li	\tmp, 12				# size of one TIMERx register block
-	mul	\tmp, \tmp, \timer			# timer * 12
-	add	\dst, \dst, \tmp			# address of requested TIMERx register
+.macro	ticks.timesCtrlBase dst:req ticks_base:req timer_num:req
+	.ifc \dst,\ticks_base
+		error "dst and ticks_base must be different registers"
+	.endif
+	.ifc \dst,\timer_num
+		.error "dst and timer_num must be different registers"
+	.endif
+
+	li	\dst, TICKS_TIMER1_CTRL_OFFSET - TICKS_TIMER0_CTRL_OFFSET
+	mul	\dst, \dst, \timer_num
+	add	\dst, \dst, \ticks_base
 .endm
 
 # Function: ticks_set_timer_increment_cycles
@@ -52,8 +53,9 @@
 #
 .globl	ticks_set_timer_increment_cycles
 ticks_set_timer_increment_cycles:
-	ticksCalcTimerRegAddr t0, a0, TICKS_TIMER0_CYCLES_OFFSET
-	sw	a1, 0(t0)
+	li	t0, TICKS_BASE
+	ticks.timesCtrlBase t1, t0, a0
+	sw	a1, TICKS_TIMER0_CYCLES_OFFSET(t1)
 	ret
 
 # Function: ticks_start_timer
@@ -68,9 +70,11 @@ ticks_set_timer_increment_cycles:
 #
 .globl	ticks_start_timer
 ticks_start_timer:
-	ticksCalcTimerRegAddr t0, a0, TICKS_TIMER0_CTRL_OFFSET + REG_ALIAS_SET_BITS
-	li	t1, TICKS_TIMER0_CTRL_ENABLE_BITS	# enable TIMERx tick generation
-	sw	t1, 0(t0)
+	li	t0, TICKS_BASE
+	ticks.timesCtrlBase t1, t0, a0
+	atomic.aliasSetBits t1, t1
+	li	t0, TICKS_TIMER0_CTRL_ENABLE_BITS
+	sw	t0, TICKS_TIMER0_CTRL_OFFSET(t1)
 	ret
 
 # Function: ticks_stop_timer
@@ -85,7 +89,9 @@ ticks_start_timer:
 #
 .globl	ticks_stop_timer
 ticks_stop_timer:
-	ticksCalcTimerRegAddr t0, a0, TICKS_TIMER0_CTRL_OFFSET + REG_ALIAS_CLR_BITS
-	li	t1, TICKS_TIMER0_CTRL_ENABLE_BITS	# disable TIMERx tick generation
-	sw	t1, 0(t0)
+	li	t0, TICKS_BASE
+	ticks.timesCtrlBase t1, t0, a0
+	atomic.aliasClrBits t1, t1
+	li	t0, TICKS_TIMER0_CTRL_ENABLE_BITS
+	sw	t0, TICKS_TIMER0_CTRL_OFFSET(t1)
 	ret

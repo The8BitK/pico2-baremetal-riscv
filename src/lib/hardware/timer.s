@@ -6,6 +6,7 @@
 
 .include	"include/hardware/regs/addressmap.inc"
 .include	"include/hardware/regs/timer.inc"
+.include	"include/macros.inc"
 
 # Function: timer_set_source_tick_generator
 # Description: Selects the TICKS block as the TIMERx clock source.
@@ -64,8 +65,7 @@ timer_set_alarm_relative:
 #
 .globl	timer_enable_alarm_interrupt
 timer_enable_alarm_interrupt:
-	li	t0, REG_ALIAS_SET_BITS	# atomic SET register address offset
-	add	t0, t0, a0
+	atomic.aliasSetBits	t0, a0
 
 	li	t1, 1			# interrupt enable bitmask for the selected alarm
 	sll	t1, t1, a1

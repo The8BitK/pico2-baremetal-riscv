@@ -6,6 +6,7 @@
 
 .include	"include/hardware/regs/addressmap.inc"
 .include	"include/hardware/regs/dma.inc"
+.include	"include/hardware/regs/dreq.inc"
 .include	"include/hardware/regs/io_bank0.inc"
 .include	"include/hardware/regs/pio.inc"
 .include	"include/hardware/regs/resets.inc"
@@ -59,13 +60,14 @@
 	.2byte	0x6203	# 7: out    pins, 3                [2]
 	.2byte	0x0045	# 8: jmp    x--, 5
 			# .wrap
+
 .L_color_prg_end:
 
 .section	.text
 
 .globl	configure_vga
 configure_vga:
-	cm.push	{ra, s0, s1, s2, s3, s4, s5, s6}, -32
+	cm.push	{ra, s0, s1, s2, s3, s4, s5, s6, a0, a1, a2, a3}, -48
 
 	li	a0, RESETS_RESET_PIO1_BITS			# power up PIO1
 	call	unreset_subsystems
@@ -87,7 +89,6 @@ configure_vga:
 	andi	a1, a1, 0xF				# FUNCSEL = (PIOx_BASE >> 20) & 0xF + 4
 	addi	a1, a1, 4					# PIO0_BASE=0x502xxxxx→2, PIO1_BASE=0x503xxxxx→3, PIO2_BASE=0x504xxxxx→4; FUNCSEL = nibble + 4
 	call	io_bank0_set_gpio_function			# GPIO is controlled by PIO
-
 	mv	a0, s1					# GPIO pin number
 	call	pads_bank0_enable_pad_output			# enable pad output and remove isolation
 
@@ -136,14 +137,12 @@ configure_vga:
 	# RGB
 	mv	a0, s0					# PIO_BASE
 	li	a1, 2					# State Machine number
-	# mv	a2, s3					# OUT pins:     none
-	# ori	a3, s3, 0x100				# SET pins:     derive from s3
-li	a2, 0x308					# OUT pins:     none
-li	a3, 0x308					# SET pins:     derive from s3
+	ori	a2, s3, 0x300				# SET pins:     derive from s3
+	ori	a3, s3, 0x300				# SIDESET pins: derive from s3
 	li	a4, 0					# SIDESET pins: none
 	li	a5, 0					# IN pins:      none
 	call	pio_sm_configure_pins
-	li	a2, 3					# SET PINDIRS
+	li	a2, 7					# SET PINDIRS
 	call	pio_sm_configure_pindirs
 
 	#-------------------------------------
@@ -153,6 +152,8 @@ li	a3, 0x308					# SET pins:     derive from s3
 	li	t0, 0x000a0000				# 25 MHz,  INT_DIV: 250/25=10, FRAC_DIV: 0x00
 	sw	t0, PIO_SM0_CLKDIV_OFFSET(s0)			# SM0
 	sw	t0, PIO_SM1_CLKDIV_OFFSET(s0)			# SM1
+	li	t0, 0x00020000				# 125 Mhz
+	sw	t0, PIO_SM2_CLKDIV_OFFSET(s0)			# SM1
 
 	#-------------------------------------
 	# Load PIO program into PIO memory
@@ -184,7 +185,7 @@ li	a3, 0x308					# SET pins:     derive from s3
 	mv	a0, s0					# PIOx base
 	li	a1, 23					# PIO memory offset
 	la	a2, .L_color_prg_start			# PIO program start address in RAM
-	la	a3, .L_color_prg_start - 2			# PIO program end address in RAM
+	la	a3, .L_color_prg_end - 2			# PIO program end address in RAM
 	call	pio_load_program
 
 	# SM2: Prepare X register value by pushing it into FIFO TX queue
@@ -207,19 +208,113 @@ li	a3, 0x308					# SET pins:     derive from s3
 	li	a3, 22
 	call	pio_sm_configure_wrap
 
+	# SM1: INSTR
+	li	t0, 0x0009				# jmp 9
+	sw	t0, PIO_SM1_INSTR_OFFSET(s0)
+
 	mv	a0, s0
 	li	a1, 2
 	li	a2, 25
 	li	a3, 31
 	call	pio_sm_configure_wrap
 
-	# SM1: INSTR
-	li	t0, 0x0009				# jmp 9
-	sw	t0, PIO_SM1_INSTR_OFFSET(s0)
-
 	# SM2: INSTR
 	li	t0, 0x0017				# jmp 23 (decimal)
 	sw	t0, PIO_SM2_INSTR_OFFSET(s0)
+
+	#-------------------------------------
+	# DMA0: rgb data
+	#-------------------------------------
+
+	li	a0, RESETS_RESET_DMA_BITS			# power up DMA
+	call	unreset_subsystems
+
+
+	li	a0, DMA_BASE
+
+	# DMA-0 WRITE, READ & TRANSFER
+
+	li	t0, PIO1_BASE + PIO_TXF2_OFFSET		# WRITE_ADDRESS
+	sw	t0, DMA_CH0_WRITE_ADDR_OFFSET(a0)
+
+	la	t0, screen_start				# READ_ADDRESS
+	sw	t0, DMA_CH0_READ_ADDR_OFFSET(a0)
+
+	la	t0, screen_start
+	la	t1, screen_end
+	sub	t0, t1, t0				# Bytes to transfer
+	sw	t0, DMA_CH0_TRANS_COUNT_OFFSET(a0)
+
+	# DMA-0 CONTROL
+
+	lw	t0, DMA_CH0_CTRL_TRIG_OFFSET(a0)
+
+	li	t1, DMA_CH0_CTRL_TRIG_DATA_SIZE_BITS
+	andn	t0, t0, t1				# set to 0, DATA_SIZE = SIZE_BYTE (8bit)
+
+	ori	t0, t0, DMA_CH0_CTRL_TRIG_INCR_READ_BITS	# read address increments with each transfer
+
+	li	t1, DMA_CH0_CTRL_TRIG_INCR_WRITE_BITS		# write address does not increment
+	andn	t0, t0, t1
+
+	li	t1, DMA_CH0_CTRL_TRIG_TREQ_SEL_BITS		# 12.6.4.1. System DREQ table
+	andn	t0, t0, t1
+	li	t1, DREQ_PIO1_TX2 << DMA_CH0_CTRL_TRIG_TREQ_SEL_LSB	# DREQ_PIO1_TX2
+	or	t0, t0, t1
+	# li	t1, 0x3f << DMA_CH0_CTRL_TRIG_TREQ_SEL_LSB
+	# or	t0, t0, t1
+
+	li	t1, DMA_CH0_CTRL_TRIG_CHAIN_TO_BITS		# chain with DMA-1
+	andn	t0, t0, t1
+	li	t1, 1 << DMA_CH0_CTRL_TRIG_CHAIN_TO_LSB
+	or	t0, t0, t1
+
+	bseti	t0, t0, DMA_CH0_CTRL_TRIG_EN_LSB 		# enable
+
+	sw	t0, DMA_CH0_CTRL_TRIG_OFFSET(a0)
+	#sw	t0, DMA_CH0_AL1_CTRL_OFFSET(a0)
+
+	# ================
+
+
+	# ================
+
+	li	a0, DMA_BASE
+
+	# DMA-1 WRITE, READ & TRANSFER
+
+	li	t0, DMA_BASE + DMA_CH0_READ_ADDR_OFFSET		# WRITE_ADDRESS
+	sw	t0, DMA_CH1_WRITE_ADDR_OFFSET(a0)
+
+	la	t0, screen_start				# READ_ADDRESS
+	sw	t0, DMA_CH1_READ_ADDR_OFFSET(a0)
+
+	li	t0, 1					# 1 word to transfer
+	sw	t0, DMA_CH1_TRANS_COUNT_OFFSET(a0)
+
+	# DMA-1 CONTROL
+
+	lw	t0, DMA_CH1_CTRL_TRIG_OFFSET(a0)
+
+	li	t1, DMA_CH1_CTRL_TRIG_DATA_SIZE_BITS
+	andn	t0, t0, t1				# set to 3, DATA_SIZE = SIZE_WORD (32bit)
+	li	t1, DMA_CH1_CTRL_TRIG_DATA_SIZE_VALUE_SIZE_WORD << DMA_CH1_CTRL_TRIG_DATA_SIZE_LSB
+	or	t0, t0, t1
+
+	li	t1, DMA_CH1_CTRL_TRIG_INCR_WRITE_BITS		# read address does not increment
+	andn	t0, t0, t1
+
+	li	t1, DMA_CH1_CTRL_TRIG_INCR_WRITE_BITS		# write address does not increment
+	andn	t0, t0, t1
+
+	li	t1, DMA_CH1_CTRL_TRIG_CHAIN_TO_BITS		# chain with DMA-0
+	andn	t0, t0, t1
+
+	bseti	t0, t0, DMA_CH1_CTRL_TRIG_EN_LSB 		# enable
+
+	#sw	t0, DMA_CH1_CTRL_TRIG_OFFSET(a0)
+	sw	t0, DMA_CH1_AL1_CTRL_OFFSET(a0)		#  (use alt1 control reg to not trigger the channel)
+
 
 	#-------------------------------------
 	# Enable StateMachines
@@ -229,4 +324,11 @@ li	a3, 0x308					# SET pins:     derive from s3
 	li	t1, 0b111					# StateMachine 0, 1, 2
 	sw	t1, PIO_CTRL_OFFSET(t0)
 
-	cm.popret	{ra, s0, s1, s2, s3, s4, s5, s6}, 32
+	cm.popret	{ra, s0, s1, s2, s3, s4, s5, s6, a0, a1, a2, a3}, 48
+
+.section .rodata
+
+
+screen_start:
+	.fill 320, 4, 0b00000111
+screen_end:

@@ -230,99 +230,50 @@ configure_vga:
 	sw	t0, PIO_SM2_INSTR_OFFSET(s0)
 
 	#-------------------------------------
-	# DMA0: rgb data
+	# DMA-0: rgb data
 	#-------------------------------------
 
 	li	a0, RESETS_RESET_DMA_BITS			# power up DMA
 	call	unreset_subsystems
 
-
 	li	a0, DMA_BASE
 
 	# DMA-0 WRITE, READ & TRANSFER (DMA_CH0_READ_ADDR_OFFSET gets configured by DMA-1)
 
-	li	t0, PIO1_BASE + PIO_TXF2_OFFSET		# WRITE_ADDRESS
-	sw	t0, DMA_CH0_WRITE_ADDR_OFFSET(a0)
+	li	t0, PIO1_BASE + PIO_TXF2_OFFSET
+	sw	t0, DMA_CH0_WRITE_ADDR_OFFSET(a0)		# DMA-0: write
 
-	# la	t0, xxx					# READ_ADDRESS
-	# sw	t0, DMA_CH0_READ_ADDR_OFFSET(a0)
+	# la	t0, xxx
+	# sw	t0, DMA_CH0_READ_ADDR_OFFSET(a0)		# DMA-0: read (pointer)
 
-#	la	t0, screen_start
-#	la	t1, screen_end
-#	sub	t0, t1, t0				# Bytes to transfer
-li	t0, 320*480
-	sw	t0, DMA_CH0_TRANS_COUNT_OFFSET(a0)
+	la	t0, screen_data_start
+	la	t1, screen_data_end
+	sub	t0, t1, t0
+	sw	t0, DMA_CH0_TRANS_COUNT_OFFSET(a0)		# DMA-0 transfer
 
-	# DMA-0 CONTROL
+	li	t0, 1 << DMA_CH0_CTRL_TRIG_EN_LSB | 1 << DMA_CH0_CTRL_TRIG_INCR_READ_LSB | 1 << DMA_CH0_CTRL_TRIG_CHAIN_TO_LSB | DREQ_PIO1_TX2 << DMA_CH0_CTRL_TRIG_TREQ_SEL_LSB
+	sw	t0, DMA_CH0_AL1_CTRL_OFFSET(a0)		# DMA-0 control register
 
-	lw	t0, DMA_CH0_CTRL_TRIG_OFFSET(a0)
-
-	li	t1, DMA_CH0_CTRL_TRIG_DATA_SIZE_BITS
-	andn	t0, t0, t1				# set to 0, DATA_SIZE = SIZE_BYTE (8bit)
-
-	ori	t0, t0, DMA_CH0_CTRL_TRIG_INCR_READ_BITS	# read address increments with each transfer
-
-	li	t1, DMA_CH0_CTRL_TRIG_INCR_WRITE_BITS		# write address does not increment
-	andn	t0, t0, t1
-
-	li	t1, DMA_CH0_CTRL_TRIG_TREQ_SEL_BITS		# 12.6.4.1. System DREQ table
-	andn	t0, t0, t1
-	li	t1, DREQ_PIO1_TX2 << DMA_CH0_CTRL_TRIG_TREQ_SEL_LSB	# DREQ_PIO1_TX2
-	or	t0, t0, t1
-	# li	t1, 0x3f << DMA_CH0_CTRL_TRIG_TREQ_SEL_LSB
-	# or	t0, t0, t1
-
-	li	t1, DMA_CH0_CTRL_TRIG_CHAIN_TO_BITS		# chain with DMA-1
-	andn	t0, t0, t1
-	li	t1, 1 << DMA_CH0_CTRL_TRIG_CHAIN_TO_LSB
-	or	t0, t0, t1
-
-	bseti	t0, t0, DMA_CH0_CTRL_TRIG_EN_LSB 		# enable
-
-	#sw	t0, DMA_CH0_CTRL_TRIG_OFFSET(a0)
-	sw	t0, DMA_CH0_AL1_CTRL_OFFSET(a0)
-
-	# ================
+	#-------------------------------------
+	# DMA-1: reload DMA-0
+	#-------------------------------------
 
 	li	a0, DMA_BASE
 
-	# DMA-1 WRITE, READ & TRANSFER
+	li	t0, DMA_BASE + DMA_CH0_READ_ADDR_OFFSET
+	sw	t0, DMA_CH1_WRITE_ADDR_OFFSET(a0)		# DMA-1: write
 
-	li	t0, DMA_BASE + DMA_CH0_READ_ADDR_OFFSET		# WRITE_ADDRESS
-	sw	t0, DMA_CH1_WRITE_ADDR_OFFSET(a0)
+	la	t0, screen_ptr
+	sw	t0, DMA_CH1_READ_ADDR_OFFSET(a0)		# DMA-1: read (pointer)
 
-	la	t0, screen_start				# READ_ADDRESS (this takes a pointer, from which it reads the real address on transfer)
-	sw	t0, DMA_CH1_READ_ADDR_OFFSET(a0)
+	li	t0, 1
+	sw	t0, DMA_CH1_TRANS_COUNT_OFFSET(a0)		# DMA-1 transfer (1 word)
 
-	li	t0, 1					# 1 word to transfer
-	sw	t0, DMA_CH1_TRANS_COUNT_OFFSET(a0)
-
-	# DMA-1 CONTROL
-
-	lw	t0, DMA_CH1_CTRL_TRIG_OFFSET(a0)
-
-	li	t1, DMA_CH1_CTRL_TRIG_DATA_SIZE_BITS
-	andn	t0, t0, t1				# set to 3, DATA_SIZE = SIZE_WORD (32bit)
-	li	t1, DMA_CH1_CTRL_TRIG_DATA_SIZE_VALUE_SIZE_WORD << DMA_CH1_CTRL_TRIG_DATA_SIZE_LSB
-	or	t0, t0, t1
-
-	li	t1, DMA_CH1_CTRL_TRIG_INCR_WRITE_BITS		# read address does not increment
-	andn	t0, t0, t1
-
-	li	t1, DMA_CH1_CTRL_TRIG_INCR_WRITE_BITS		# write address does not increment
-	andn	t0, t0, t1
-
-	li	t1, DMA_CH1_CTRL_TRIG_CHAIN_TO_BITS		# chain with DMA-0
-	andn	t0, t0, t1
-
-	bseti	t0, t0, DMA_CH1_CTRL_TRIG_EN_LSB 		# enable
-
-	sw	t0, DMA_CH1_CTRL_TRIG_OFFSET(a0)
-	#sw	t0, DMA_CH1_AL1_CTRL_OFFSET(a0)		#  (use alt1 control reg to not trigger the channel)
-
+	li	t0, 1 << DMA_CH0_CTRL_TRIG_EN_LSB | DMA_CH0_CTRL_TRIG_DATA_SIZE_VALUE_SIZE_WORD << DMA_CH0_CTRL_TRIG_DATA_SIZE_LSB
+	sw	t0, DMA_CH1_CTRL_TRIG_OFFSET(a0)		# DMA-1 control register
 
 	#-------------------------------------
-	# Enable StateMachines
+	# Enable PIO StateMachines
 	#-------------------------------------
 
 	atomic.aliasSetBits t0, s0				# PIOx, set bits alias
@@ -331,18 +282,18 @@ li	t0, 320*480
 
 	cm.popret	{ra, s0, s1, s2, s3, s4, s5, s6, a0, a1, a2, a3}, 48
 
-
 .section .rodata
-xxx:
-	.fill 320*60, 1, 0b00000000
-	.fill 320*60, 1, 0b00001001
-	.fill 320*60, 1, 0b00010010
-	.fill 320*60, 1, 0b00011011
-	.fill 320*60, 1, 0b00100100
-	.fill 320*60, 1, 0b00101101
-	.fill 320*60, 1, 0b00110110
-	.fill 320*60, 1, 0b00111111
 
-screen_start:
-	.word	xxx
-screen_end:
+screen_data_start:
+	.fill 40, 1, 0b00000000
+	.fill 40, 1, 0b00001001
+	.fill 40, 1, 0b00010010
+	.fill 40, 1, 0b00011011
+	.fill 40, 1, 0b00100100
+	.fill 40, 1, 0b00101101
+	.fill 40, 1, 0b00110110
+	.fill 40, 1, 0b00111111
+screen_data_end:
+
+screen_ptr:
+	.word	screen_data_start

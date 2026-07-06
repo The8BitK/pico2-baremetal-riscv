@@ -73,11 +73,11 @@ configure_vga:
 	call	unreset_subsystems
 
 	li	s0, PIO1_BASE				# PIO1 to use
-	li	s1, 6					# GPIO pin number: HSYNC
-	li	s2, 7					# GPIO pin number: VSYNC
-	li	s3, 8					# GPIO pin number: R
-	li	s4, 9					# GPIO pin number: G
-	li	s5, 10					# GPIO pin number: B
+	li	s1, 4					# GPIO pin number: HSYNC
+	li	s2, 5					# GPIO pin number: VSYNC
+	li	s3, 6					# GPIO pin number: R
+	li	s4, 7					# GPIO pin number: G
+	li	s5, 8					# GPIO pin number: B
 
 	#-------------------------------------
 	# Configure GPIO pins
@@ -123,16 +123,23 @@ configure_vga:
 	li	a2, 1					# SET PINDIRS
 	call	pio_sm_configure_pindirs
 
-	# HSYNC
+	# VSYNC
 	mv	a0, s0					# PIO_BASE
 	li	a1, 1					# State Machine number
 	li	a2, 0					# OUT pins:     none
 	ori	a3, s2, 0x100				# SET pins:     derive from s2
-	ori	a4, s2, 0x100				# SIDESET pins: derive from s2
+	ori	a4, s2, 0x200				# SIDESET pins: derive from s2 (one extra bit to make sideset optional)
 	li	a5, 0					# IN pins:      none
 	call	pio_sm_configure_pins
+
+	# Make sideset pins optional
+	lw	t1, PIO_SM1_EXECCTRL_OFFSET(s0)
+	bseti	t1, t1, 30
+	sw	t1, PIO_SM1_EXECCTRL_OFFSET(s0)
+
 	li	a2, 1					# SET PINDIRS
 	call	pio_sm_configure_pindirs
+
 
 	# RGB
 	mv	a0, s0					# PIO_BASE
@@ -167,7 +174,7 @@ configure_vga:
 	call	pio_load_program
 
 	# SM0: Prepare X register value by pushing it into FIFO TX queue
-	li	t0, 640 + 16 - 2 				# TODO: check if the numbers are correct
+	li	t0, 640 + 16 - 1 				# active + frontporch - 1
 	sw	t0, PIO_TXF0_OFFSET(s0)
 
 	# SM1: VSYNC
@@ -178,7 +185,7 @@ configure_vga:
 	call	pio_load_program
 
 	# SM1: Prepare X register value by pushing it into FIFO TX queue
-	li	t0, 480
+	li	t0, 479					# active - 1
 	sw	t0, PIO_TXF1_OFFSET(s0)
 
 	# SM2: RGB
@@ -189,7 +196,7 @@ configure_vga:
 	call	pio_load_program
 
 	# SM2: Prepare X register value by pushing it into FIFO TX queue
-	li	t0, 480
+	li	t0, 319					# active/2 - 1 (one byte stores 2 pixels)
 	sw	t0, PIO_TXF2_OFFSET(s0)
 
 	#-------------------------------------
@@ -232,17 +239,18 @@ configure_vga:
 
 	li	a0, DMA_BASE
 
-	# DMA-0 WRITE, READ & TRANSFER
+	# DMA-0 WRITE, READ & TRANSFER (DMA_CH0_READ_ADDR_OFFSET gets configured by DMA-1)
 
 	li	t0, PIO1_BASE + PIO_TXF2_OFFSET		# WRITE_ADDRESS
 	sw	t0, DMA_CH0_WRITE_ADDR_OFFSET(a0)
 
-	la	t0, screen_start				# READ_ADDRESS
-	sw	t0, DMA_CH0_READ_ADDR_OFFSET(a0)
+	# la	t0, xxx					# READ_ADDRESS
+	# sw	t0, DMA_CH0_READ_ADDR_OFFSET(a0)
 
-	la	t0, screen_start
-	la	t1, screen_end
-	sub	t0, t1, t0				# Bytes to transfer
+#	la	t0, screen_start
+#	la	t1, screen_end
+#	sub	t0, t1, t0				# Bytes to transfer
+li	t0, 320*480
 	sw	t0, DMA_CH0_TRANS_COUNT_OFFSET(a0)
 
 	# DMA-0 CONTROL
@@ -271,11 +279,8 @@ configure_vga:
 
 	bseti	t0, t0, DMA_CH0_CTRL_TRIG_EN_LSB 		# enable
 
-	sw	t0, DMA_CH0_CTRL_TRIG_OFFSET(a0)
-	#sw	t0, DMA_CH0_AL1_CTRL_OFFSET(a0)
-
-	# ================
-
+	#sw	t0, DMA_CH0_CTRL_TRIG_OFFSET(a0)
+	sw	t0, DMA_CH0_AL1_CTRL_OFFSET(a0)
 
 	# ================
 
@@ -286,7 +291,7 @@ configure_vga:
 	li	t0, DMA_BASE + DMA_CH0_READ_ADDR_OFFSET		# WRITE_ADDRESS
 	sw	t0, DMA_CH1_WRITE_ADDR_OFFSET(a0)
 
-	la	t0, screen_start				# READ_ADDRESS
+	la	t0, screen_start				# READ_ADDRESS (this takes a pointer, from which it reads the real address on transfer)
 	sw	t0, DMA_CH1_READ_ADDR_OFFSET(a0)
 
 	li	t0, 1					# 1 word to transfer
@@ -312,8 +317,8 @@ configure_vga:
 
 	bseti	t0, t0, DMA_CH1_CTRL_TRIG_EN_LSB 		# enable
 
-	#sw	t0, DMA_CH1_CTRL_TRIG_OFFSET(a0)
-	sw	t0, DMA_CH1_AL1_CTRL_OFFSET(a0)		#  (use alt1 control reg to not trigger the channel)
+	sw	t0, DMA_CH1_CTRL_TRIG_OFFSET(a0)
+	#sw	t0, DMA_CH1_AL1_CTRL_OFFSET(a0)		#  (use alt1 control reg to not trigger the channel)
 
 
 	#-------------------------------------
@@ -326,9 +331,18 @@ configure_vga:
 
 	cm.popret	{ra, s0, s1, s2, s3, s4, s5, s6, a0, a1, a2, a3}, 48
 
-.section .rodata
 
+.section .rodata
+xxx:
+	.fill 320*60, 1, 0b00000000
+	.fill 320*60, 1, 0b00001001
+	.fill 320*60, 1, 0b00010010
+	.fill 320*60, 1, 0b00011011
+	.fill 320*60, 1, 0b00100100
+	.fill 320*60, 1, 0b00101101
+	.fill 320*60, 1, 0b00110110
+	.fill 320*60, 1, 0b00111111
 
 screen_start:
-	.fill 320, 4, 0b00000111
+	.word	xxx
 screen_end:
